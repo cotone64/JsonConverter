@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Jsonをtxtに</title>
+</head>
+<body>
+  <h2>JSONファイルを読み込んで変換</h2>
+
+  <label for="partSelect">部位を選択:</label>
+  <select id="partSelect">
+    <option value="HEAD">HEAD</option>
+    <option value="BODY">BODY</option>
+    <option value="ARM0">ARM0</option>
+    <option value="ARM1">ARM1</option>
+    <option value="LEG0">LEG0</option>
+    <option value="LEG1">LEG1</option>
+  </select>
+
+  <br><br>
+
+  <input type="file" id="jsonFileInput" accept=".json">
+  <button id="copyButton">コピー</button>
+
+  <pre id="output" style="white-space: pre-wrap; background: #f0f0f0; padding: 10px;"></pre>
+
+  <script>
+    let currentJson = null;     // 読み込まれたJSONデータ
+    let currentOutput = "";     // 現在の変換テキスト
+
+    function convertJsonToText(json, part) {
+      const bones = json["minecraft:geometry"]?.[0]?.bones ?? [];
+      let result = '';
+
+      bones.forEach(bone => {
+        const name = bone.name || "UNKNOWN";
+        const cubes = bone.cubes || [];
+
+        cubes.forEach(cube => {
+          const origin = cube.origin;
+          const size = cube.size;
+          const uv = cube.uv;
+
+          const x = origin[0];
+          const y = origin[1] - 1;
+          const z = origin[2];
+
+          const sx = size[0];
+          const sy = size[1];
+          const sz = size[2];
+
+          const uvx = uv[0];
+          const uvy = uv[1];
+
+          result += `${name}:${part} ${x} ${y} ${z} ${sx} ${sy} ${sz} ${uvx} ${uvy}\n`;
+        });
+      });
+
+      return result.trim();
+    }
+
+    function updateOutput() {
+      if (!currentJson) return;
+      const part = document.getElementById("partSelect").value;
+      currentOutput = convertJsonToText(currentJson, part);
+      document.getElementById('output').textContent = currentOutput || "変換できるデータが見つかりませんでした。";
+    }
+
+    // JSONファイル読み込み
+    document.getElementById('jsonFileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          currentJson = JSON.parse(e.target.result);
+          updateOutput();
+        } catch (err) {
+          document.getElementById('output').textContent = "エラー: JSONファイルの読み込みに失敗しました。";
+        }
+      };
+
+      reader.readAsText(file);
+    });
+
+    // 部位変更時に再変換
+    document.getElementById('partSelect').addEventListener('change', updateOutput);
+
+    // コピー処理
+    document.getElementById('copyButton').addEventListener('click', function() {
+      if (!currentOutput) return alert("コピーするデータがありません。");
+
+      navigator.clipboard.writeText(currentOutput).then(() => {
+        alert("変換結果をクリップボードにコピーしました！");
+      }).catch(err => {
+        alert("コピーに失敗しました。");
+      });
+    });
+  </script>
+</body>
+</html>
